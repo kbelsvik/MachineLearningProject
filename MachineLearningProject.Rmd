@@ -1,0 +1,49 @@
+---
+title: "MachineLearningProject"
+author: "kbelsvik"
+date: "08/22/2014"
+output: html_document
+---
+
+```{r}
+library(caret)
+library(randomForest)
+data <- read.csv("pml-training.csv", na.strings=c("NA", ""))
+na.count <- sapply(data, function(col){sum(is.na(col))})
+data <- data[,na.count==0]
+data <- data[,-c(1:7)]
+
+set.seed(98772)
+#trainingIndex <- createDataPartition(data$classe, p=.7, list=F)
+#training <- data[trainingIndex, ]
+folds <- createFolds(data$classe, 5, list=F)
+training1 <- data[folds!=1,]
+test1 <- data[folds==1,]
+
+set.seed(1764)
+modelFit1 <- randomForest(classe ~ ., data=training1)
+predictions1 <- predict(modelFit1, test1)
+confusionMatrix(predictions1, test1$classe)
+
+training2 <- data[folds!=2,]
+test2 <- data[folds==2,]
+
+set.seed(2694)
+modelFit2 <- train(classe ~., data=training2, method="rf", preProc="pca", trControl=trainControl(method="cv", number=5))
+predictions2 <- predict(modelFit2, test2)
+confusionMatrix(prediction2, test2$classe)
+
+training3 <- data[folds!=3,]
+test3 <- data[folds==3,]
+
+set.seed(3622)
+modelFit3 <- train(classe ~., training3, method="gbm", preProcess="pca", trControl=trainControl(method="cv", number=5))
+predictions3 <- predict(modelFit3, test3)
+confusionMatrix(predictions3, test3$classe)
+
+data2 <- read.csv("pml-testing.csv", na.strings=c("NA", ""))
+na.count <- sapply(data2, function(col){sum(is.na(col))})
+data2 <- data2[,na.count==0]
+pre <- predict(modelFit1, data2)
+data2 <- data2[,-c(1:7)]
+```
