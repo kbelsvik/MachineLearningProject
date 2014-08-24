@@ -1,49 +1,46 @@
 ---
-title: "MachineLearningProject"
+title: "Machine Learning Project"
 author: "kbelsvik"
 date: "08/22/2014"
-output: html_document
+output:
+  html_document:
+    keep_md: yes
 ---
+##Summary
+The goal for this project is to fit a model to a set of motion data recorded for 5 different categories of activity and then use that model to predict the activities being prefomed in a separate test set of data.  This will be done by fitting the training data using a random forest, cross validating using a 10-fold cross validated.
+
+##Method
+
+First the data is read in and prepared for training.  Several of the columns are mostly empty, these ones are removed, as well as the first seven columns. This leaves only the outcome in the final column, and the measured data from motion sensors as potential predictors.
+
+
+```{r cache=TRUE}
+library(caret)
+training <- read.csv("pml-training.csv", na.strings=c("NA", ""))
+na.count <- sapply(training, function(col){sum(is.na(col))})
+table(na.count)
+training <- training[,na.count==0]
+training <- training[,-c(1:7)]
+```
+
+A random forest method will be used to model the data in order to achieve high accuracy with prediction.  The call to train has been set to up preform cross validation with k-folds using the trControl paramater.  The trainControl function defaults to 10 folds.
+```{r cache=TRUE}
+set.seed(1764)
+modFit <- train(classe ~., data=training, method="rf", trControl=trainControl(method="cv"))
+```
 
 ```{r}
-library(caret)
-library(randomForest)
-data <- read.csv("pml-training.csv", na.strings=c("NA", ""))
-na.count <- sapply(data, function(col){sum(is.na(col))})
-data <- data[,na.count==0]
-data <- data[,-c(1:7)]
 
-set.seed(98772)
-#trainingIndex <- createDataPartition(data$classe, p=.7, list=F)
-#training <- data[trainingIndex, ]
-folds <- createFolds(data$classe, 5, list=F)
-training1 <- data[folds!=1,]
-test1 <- data[folds==1,]
+modFit$finalModel
+```
 
-set.seed(1764)
-modelFit1 <- randomForest(classe ~ ., data=training1)
-predictions1 <- predict(modelFit1, test1)
-confusionMatrix(predictions1, test1$classe)
+The random forest model settled on has `r modFit$finalModel$mtry` as the tuning parameter, with an estimated out of sample error rate of `r modFit$finalModel$err.rate[modFit$finalModel$ntree, "OOB"]`.
 
-training2 <- data[folds!=2,]
-test2 <- data[folds==2,]
+##Predictions
 
-set.seed(2694)
-modelFit2 <- train(classe ~., data=training2, method="rf", preProc="pca", trControl=trainControl(method="cv", number=5))
-predictions2 <- predict(modelFit2, test2)
-confusionMatrix(prediction2, test2$classe)
-
-training3 <- data[folds!=3,]
-test3 <- data[folds==3,]
-
-set.seed(3622)
-modelFit3 <- train(classe ~., training3, method="gbm", preProcess="pca", trControl=trainControl(method="cv", number=5))
-predictions3 <- predict(modelFit3, test3)
-confusionMatrix(predictions3, test3$classe)
-
-data2 <- read.csv("pml-testing.csv", na.strings=c("NA", ""))
-na.count <- sapply(data2, function(col){sum(is.na(col))})
-data2 <- data2[,na.count==0]
-pre <- predict(modelFit1, data2)
-data2 <- data2[,-c(1:7)]
+Finally the model is used to make predictions on the test set.
+```{r}
+test <- read.csv("pml-testing.csv", na.strings=c("NA", ""))
+answers <- predict(modFit, test)
+data.frame(problem.id=test$problem_id, answer=answers)
 ```
